@@ -1,0 +1,163 @@
+﻿@page "/"
+@using System.IO.Ports
+@using System.Text
+@inject ISnackbar Snackbar
+
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="my-4">
+    <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Port Selector and Data Inputs</MudText>
+
+    <!-- Top: Port selector -->
+    <MudPaper Elevation="3" Class="pa-4 mb-4" Style="text-align: center;">
+        <MudSelect T="string" Label="Select Port" Variant="Variant.Outlined" ValueChanged="OnPortChanged" Value="@selectedPort">
+            @foreach (var port in availablePorts)
+            {
+                <MudSelectItem Value="@port">@port</MudSelectItem>
+            }
+        </MudSelect>
+    </MudPaper>
+
+    <!-- Middle/Bottom: 8 data inputs in a 4x2 grid -->
+    <MudGrid Spacing="4" Justify="Justify.Center">
+        @for (int i = 0; i < 8; i++)
+        {
+            int index = i;
+            <MudItem xs="6" sm="3">
+                <MudTextField @bind-Value="data[index]" Label="@($"A{index + 1}")" Variant="Variant.Outlined" Style="@GetBackgroundStyle(index)" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <!-- Buttons, status, and received data display -->
+    <MudPaper Elevation="3" Class="pa-4 mt-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Connect" Disabled="@(string.IsNullOrEmpty(selectedPort) || isConnected)">Connect</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SendData" Disabled="!isConnected" Class="ml-2">Send Data</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="Disconnect" Disabled="!isConnected" Class="ml-2">Disconnect</MudButton>
+
+        <MudText Class="mt-4">Status: @status</MudText>
+        <MudText Class="mt-2">Received Data: @receivedData</MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private string[] availablePorts = SerialPort.GetPortNames();
+    private string selectedPort;
+    private string[] data = new string[8];
+    private SerialPort serialPort;
+    private bool isConnected = false;
+    private string status = "Disconnected";
+    private string receivedData = "";
+
+    private void OnPortChanged(string port)
+    {
+        selectedPort = port;
+    }
+
+    private async Task Connect()
+    {
+        try
+        {
+            serialPort = new SerialPort(selectedPort, 9600);
+            serialPort.DataReceived += SerialPort_DataReceived;
+            serialPort.Open();
+            isConnected = true;
+            status = $"Connected to {selectedPort}";
+            Snackbar.Add(status, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            status = $"Connection failed: {ex.Message}";
+            Snackbar.Add(status, Severity.Error);
+        }
+    }
+
+    private async Task SendData()
+    {
+        if (!isConnected) return;
+
+        try
+        {
+            string message = string.Join(",", data.Where(d => !string.IsNullOrEmpty(d)));
+            if (string.IsNullOrEmpty(message))
+            {
+                Snackbar.Add("Enter data in at least one field", Severity.Warning);
+                return;
+            }
+            serialPort.Write(message + "\r\n");
+            status = "Data sent successfully";
+            Snackbar.Add(status, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            status = $"Send failed: {ex.Message}";
+            Snackbar.Add(status, Severity.Error);
+        }
+    }
+
+    private async Task Disconnect()
+    {
+        try
+        {
+            if (serialPort != null && serialPort.IsOpen)
+            {
+                serialPort.DataReceived -= SerialPort_DataReceived;
+                serialPort.Close();
+            }
+            isConnected = false;
+            status = "Disconnected";
+            receivedData = "";
+            Array.Clear(data, 0, data.Length);
+            StateHasChanged();
+            Snackbar.Add(status, Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            status = $"Disconnect failed: {ex.Message}";
+            Snackbar.Add(status, Severity.Error);
+        }
+    }
+
+    private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
+    {
+        if (serialPort != null && serialPort.IsOpen)
+        {
+            string dataReceived = serialPort.ReadExisting();
+            InvokeAsync(() =>
+            {
+                receivedData += dataReceived;
+                if (receivedData.Contains('/'))
+                {
+                    string[] values = receivedData.Split('/').Take(8).ToArray();
+                    for (int i = 0; i < Math.Min(values.Length, 8); i++)
+                    {
+                        if (int.TryParse(values[i], out int value))
+                        {
+                            data[i] = value.ToString();
+                        }
+                    }
+                    receivedData = "";
+                }
+                if (receivedData.Length > 100)
+                {
+                    receivedData = receivedData.Substring(receivedData.Length - 100);
+                }
+                StateHasChanged();
+            });
+        }
+    }
+
+    private string GetBackgroundStyle(int index)
+    {
+        if (int.TryParse(data[index], out int value))
+        {
+            if (value >= 0 && value <= 250) return "background-color: #4CAF50;"; // Xanh lá
+            if (value > 250 && value <= 500) return "background-color: #FFEB3B;"; // Vàng
+            if (value > 500 && value <= 750) return "background-color: #FF9800;"; // Cam
+            if (value > 750 && value <= 1000) return "background-color: #F44336;"; // Đỏ
+        }
+        return "background-color: #FFFFFF;"; // Mặc định trắng nếu không hợp lệ
+    }
+}
