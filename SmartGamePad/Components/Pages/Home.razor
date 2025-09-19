@@ -20,15 +20,34 @@
         </MudSelect>
     </MudPaper>
 
-    <!-- Middle/Bottom: 8 data inputs in a 4x2 grid -->
+    <!-- Middle/Bottom: 8 data inputs in custom layout -->
     <MudGrid Spacing="4" Justify="Justify.Center">
-        @for (int i = 0; i < 8; i++)
-        {
-            int index = i;
-            <MudItem xs="6" sm="3">
-                <MudTextField @bind-Value="data[index]" Label="@($"A{index + 1}")" Variant="Variant.Outlined" Style="@GetBackgroundStyle(index)" />
-            </MudItem>
-        }
+        <!-- Left side (a1, a2, a3) -->
+        <MudItem xs="12" sm="3">
+            <MudStack Row="false" Spacing="2" Align="Align.Center">
+                <MudTextField @bind-Value="data[0]" Label="a1" Variant="Variant.Outlined" Style="@GetBackgroundStyle(0)" />
+                <MudTextField @bind-Value="data[1]" Label="a2" Variant="Variant.Outlined" Style="@GetBackgroundStyle(1)" />
+                <MudTextField @bind-Value="data[2]" Label="a3" Variant="Variant.Outlined" Style="@GetBackgroundStyle(2)" />
+            </MudStack>
+        </MudItem>
+
+        <!-- Center (a4, a5) -->
+        <MudItem xs="12" sm="3">
+            <MudStack Row="false" Spacing="2" Align="Align.Center">
+                <MudPaper Class="pa-16 ma-2" Elevation="0"></MudPaper>
+                <MudTextField @bind-Value="data[3]" Label="a4" Variant="Variant.Outlined" Style="@GetBackgroundStyle(3)" />
+                <MudTextField @bind-Value="data[4]" Label="a5" Variant="Variant.Outlined" Style="@GetBackgroundStyle(4)" />
+            </MudStack>
+        </MudItem>
+
+        <!-- Right side (a6, a7, a8) -->
+        <MudItem xs="12" sm="3">
+            <MudStack Row="false" Spacing="2" Align="Align.Center">
+                <MudTextField @bind-Value="data[5]" Label="a6" Variant="Variant.Outlined" Style="@GetBackgroundStyle(5)" />
+                <MudTextField @bind-Value="data[6]" Label="a7" Variant="Variant.Outlined" Style="@GetBackgroundStyle(6)" />
+                <MudTextField @bind-Value="data[7]" Label="a8" Variant="Variant.Outlined" Style="@GetBackgroundStyle(7)" />
+            </MudStack>
+        </MudItem>
     </MudGrid>
 
     <!-- Buttons, status, and received data display -->
